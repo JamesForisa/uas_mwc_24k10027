@@ -63,16 +63,13 @@
         const role = localStorage.getItem('userRole');
         
         if (!role) {
-            // Jika belum login -> Tampilkan form login, sembunyikan dashboard utama
             document.getElementById('loginSection').classList.remove('d-none');
             document.getElementById('mainSection').classList.add('d-none');
         } else {
-            // Jika sudah login -> Sembunyikan form login, buka dashboard utama
             document.getElementById('loginSection').classList.add('d-none');
             document.getElementById('mainSection').classList.remove('d-none');
             document.getElementById('roleDisplay').textContent = "Role: " + role.toUpperCase();
 
-            // Atur Hak Akses Desain Grid Komponen Komparasi
             if (role === 'admin') {
                 document.getElementById('uploadCol').classList.remove('d-none'); // Munculkan form upload
                 document.getElementById('catalogCol').className = "col-md-8";     // Katalog mengecil ke kanan (lebar 8)
@@ -86,7 +83,6 @@
         }
     }
 
-    // 2. LOGIKA KIRIM DATA LOGIN KE BACKEND
     document.getElementById('formLogin').addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('username').value;
@@ -101,7 +97,7 @@
             const data = await response.json();
 
             if (data.success) {
-                localStorage.setItem('userRole', data.role); // Simpan role di browser cache
+                localStorage.setItem('userRole', data.role);
                 cekAkses();
             }
         } catch (err) {
@@ -109,7 +105,6 @@
         }
     });
 
-    // 3. LOGIKA READ DATA DARI SQLITE
     async function fetchProducts() {
         const response = await fetch('/api/products');
         const products = await response.json();
@@ -117,7 +112,6 @@
         container.innerHTML = '';
 
         products.forEach(p => {
-            // Menyesuaikan ukuran kolom kartu produk agar serasi dengan layout role admin/member
             const colSize = localStorage.getItem('userRole') === 'admin' ? 'col-sm-6' : 'col-md-4 col-sm-6';
             container.innerHTML += `
                 <div class="${colSize} col-12">
@@ -135,7 +129,6 @@
         });
     }
 
-    // 4. LOGIKA CREATE DATA + UPLOAD FOTO
     document.getElementById('formTambah').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData();
@@ -153,13 +146,11 @@
         }
     });
 
-    // 5. LOGIKA LOGOUT
     function logout() {
         localStorage.clear();
         cekAkses();
     }
 
-    // Jalankan fungsi pengaman akses pertama kali saat web dibuka
     cekAkses();
 </script>
 </body>
