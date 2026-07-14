@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aksesoris HP - Login & CRUD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div id="loginSection" class="container d-none" style="max-width: 400px; margin-top: 100px;">
+    <div class="card p-4 shadow-sm border-0">
+        <h4 class="text-center fw-bold mb-3">Sign In Aplikasi</h4>
+        <form id="formLogin">
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Username</label>
+                <input type="text" id="username" class="form-control" placeholder="admin / member" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Password</label>
+                <input type="password" id="password" class="form-control" placeholder="admin123 / member123" required>
+            </div>
+            <button type="submit" class="btn btn-dark w-100 fw-bold">Masuk</button>
+        </form>
+    </div>
+</div>
+
+<div id="mainSection" class="d-none">
+    <nav class="navbar navbar-dark bg-dark px-3 mb-4 d-flex justify-content-between">
+        <span class="navbar-brand mb-0 h1">📱 TOKO AKSESORIS</span>
+        <div class="d-flex align-items-center gap-3">
+            <span id="roleDisplay" class="text-white small fw-bold"></span>
+            <button onclick="logout()" class="btn btn-outline-danger btn-sm fw-bold">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        <div class="row">
+            <div class="col-md-4 mb-4 d-none" id="uploadCol">
+                <div class="card shadow-sm border-0 p-4">
+                    <h5 class="fw-bold text-success mb-3">Upload Produk Baru</h5>
+                    <form id="formTambah" enctype="multipart/form-data">
+                        <div class="mb-2"><label class="form-label small fw-bold">Nama Produk</label><input type="text" id="addName" class="form-control" required></div>
+                        <div class="mb-2"><label class="form-label small fw-bold">Harga (Rp)</label><input type="number" id="addPrice" class="form-control" required></div>
+                        <div class="mb-2"><label class="form-label small fw-bold">Kategori</label><input type="text" id="addCategory" class="form-control" required></div>
+                        <div class="mb-2"><label class="form-label small fw-bold">Deskripsi</label><textarea id="addDescription" class="form-control" rows="2" required></textarea></div>
+                        <div class="mb-3"><label class="form-label small fw-bold">File Gambar</label><input type="file" id="uploadImage" class="form-control" accept="image/*" required></div>
+                        <button type="submit" class="btn btn-success w-100 fw-bold">Simpan & Publish</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-12" id="catalogCol">
+                <h5 class="fw-bold text-dark mb-3" id="catalogTitle">Daftar Katalog Produk</h5>
+                <div class="row g-3" id="productContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function cekAkses() {
+        const role = localStorage.getItem('userRole');
+        
+        if (!role) {
+            // Jika belum login -> Tampilkan form login, sembunyikan dashboard utama
+            document.getElementById('loginSection').classList.remove('d-none');
+            document.getElementById('mainSection').classList.add('d-none');
+        } else {
+            // Jika sudah login -> Sembunyikan form login, buka dashboard utama
+            document.getElementById('loginSection').classList.add('d-none');
+            document.getElementById('mainSection').classList.remove('d-none');
+            document.getElementById('roleDisplay').textContent = "Role: " + role.toUpperCase();
+
+            // Atur Hak Akses Desain Grid Komponen Komparasi
+            if (role === 'admin') {
+                document.getElementById('uploadCol').classList.remove('d-none'); // Munculkan form upload
+                document.getElementById('catalogCol').className = "col-md-8";     // Katalog mengecil ke kanan (lebar 8)
+                document.getElementById('catalogTitle').textContent = "Manajemen Produk Saya (Mode Admin)";
+            } else {
+                document.getElementById('uploadCol').classList.add('d-none');    // Sembunyikan form upload
+                document.getElementById('catalogCol').className = "col-md-12";    // Katalog melebar penuh (lebar 12)
+                document.getElementById('catalogTitle').textContent = "Katalog Produk Belanja (Mode Member)";
+            }
+            fetchProducts();
+        }
+    }
+
+    // 2. LOGIKA KIRIM DATA LOGIN KE BACKEND
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                localStorage.setItem('userRole', data.role); // Simpan role di browser cache
+                cekAkses();
+            }
+        } catch (err) {
+            alert('Username atau Password Anda salah!');
+        }
+    });
+
+    // 3. LOGIKA READ DATA DARI SQLITE
+    async function fetchProducts() {
+        const response = await fetch('/api/products');
+        const products = await response.json();
+        const container = document.getElementById('productContainer');
+        container.innerHTML = '';
+
+        products.forEach(p => {
+            // Menyesuaikan ukuran kolom kartu produk agar serasi dengan layout role admin/member
+            const colSize = localStorage.getItem('userRole') === 'admin' ? 'col-sm-6' : 'col-md-4 col-sm-6';
+            container.innerHTML += `
+                <div class="${colSize} col-12">
+                    <div class="card h-100 shadow-sm border-0">
+                        <img src="${p.image}" class="card-img-top p-3 bg-white" style="height: 180px; object-fit: contain;">
+                        <div class="card-body d-flex flex-column">
+                            <span class="badge bg-secondary mb-2 align-self-start">${p.category}</span>
+                            <h6 class="card-title fw-bold text-dark mb-1">${p.name}</h6>
+                            <p class="text-muted small flex-grow-1 mb-2">${p.description}</p>
+                            <h6 class="text-success fw-bold">Rp ${p.price.toLocaleString('id-ID')}</h6>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // 4. LOGIKA CREATE DATA + UPLOAD FOTO
+    document.getElementById('formTambah').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('name', document.getElementById('addName').value);
+        formData.append('price', document.getElementById('addPrice').value);
+        formData.append('category', document.getElementById('addCategory').value);
+        formData.append('description', document.getElementById('addDescription').value);
+        formData.append('imageFile', document.getElementById('uploadImage').files[0]);
+
+        const response = await fetch('/api/products', { method: 'POST', body: formData });
+        if (response.ok) {
+            alert('Produk baru berhasil ditambahkan!');
+            document.getElementById('formTambah').reset();
+            fetchProducts();
+        }
+    });
+
+    // 5. LOGIKA LOGOUT
+    function logout() {
+        localStorage.clear();
+        cekAkses();
+    }
+
+    // Jalankan fungsi pengaman akses pertama kali saat web dibuka
+    cekAkses();
+</script>
+</body>
+</html>
